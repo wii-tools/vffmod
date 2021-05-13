@@ -12,6 +12,15 @@ const (
 	FATAddrDirectory = 0x10
 )
 
+var (
+	// ForbiddenSingleDot is an ASCII "." followed by 7 spaces.
+	ForbiddenSingleDot = []byte{0x2e, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20}
+	// ForbiddenDoubleDot is ".." in ASCII followed by 6 spaces.
+	ForbiddenDoubleDot = []byte{0x2e, 0x2e, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20}
+	// ForbiddenExtension is 3 spaces.
+	ForbiddenExtension = []byte{0x20, 0x20, 0x20}
+)
+
 // FATEntry represents a directory as presented within a FAT filesystem.
 type FATEntry struct {
 	Name                   [8]byte
@@ -27,6 +36,11 @@ type FATEntry struct {
 	ModificationDate       uint16
 	ClusterNum             uint16
 	Size                   uint32
+}
+
+// equal returns if two byte slices are equal.
+func equal(a []byte, b []byte) bool {
+	return bytes.Compare(a, b) == 0
 }
 
 // parseEntries parses the FAT entry table at the given offset.
@@ -53,6 +67,11 @@ func (v *VFFFS) parseEntries(data []byte) []FATFile {
 			continue
 		}
 
+		// We are not dealing with . or .. as names. All end with 3 spaces as an extension.
+		if (equal(dirEntry.Name[:], ForbiddenSingleDot) || equal(dirEntry.Name[:], ForbiddenDoubleDot)) && equal(dirEntry.Extension[:], ForbiddenExtension) {
+			continue
+		}
+
 		// dataOffset must grow by 1024 to be able to read over the current entry table.
 		fileInfo = append(fileInfo, FATFile{
 			info: FATFileInfo{
@@ -71,8 +90,13 @@ type FATFile struct {
 }
 
 // Stat is supposed to return statistics, and we already have them computed.
-func (f *FATFile) Stat() (FATFileInfo, error) {
+func (f FATFile) Stat() (fs.FileInfo, error) {
 	return f.info, nil
+}
+
+// Close is supposed to close a file. We had nothing open to begin with.
+func (f *FATFile) Close() error {
+	return nil
 }
 
 // FATFileInfo provides fs.FileInfo-like information.
@@ -84,13 +108,13 @@ type FATFileInfo struct {
 }
 
 // Size returns the size of the current entry.
-func (e *FATFileInfo) Size() int64 {
+func (e FATFileInfo) Size() int64 {
 	return int64(e.currentFile.Size)
 }
 
 // Mode returns a spoofed-together mode for the current entry.
 // It only handles directories, as that is all we know how to handle.
-func (e *FATFileInfo) Mode() fs.FileMode {
+func (e FATFileInfo) Mode() fs.FileMode {
 	if e.currentFile.Attributes&FATAddrDirectory == FATAddrDirectory {
 		return fs.ModeDir
 	} else {
@@ -99,12 +123,12 @@ func (e *FATFileInfo) Mode() fs.FileMode {
 }
 
 // IsDir returns whether the entry is a directory or not.
-func (e *FATFileInfo) IsDir() bool {
+func (e FATFileInfo) IsDir() bool {
 	return e.currentFile.Attributes&FATAddrDirectory == FATAddrDirectory
 }
 
 // Name returns the name of the current entry.
-func (e *FATFileInfo) Name() string {
+func (e FATFileInfo) Name() string {
 	dirEntry := e.currentFile
 	name := strings.TrimSpace(string(dirEntry.Name[:]))
 	if name[len(name)-1:] == "." {
@@ -118,4 +142,32 @@ func (e *FATFileInfo) Name() string {
 
 	extension := strings.TrimSpace(string(dirEntry.Extension[:]))
 	return name + "." + extension
+}
+
+// FATDirEntryInfo provides fs.DirEntry-like information.
+type FATDirEntryInfo struct {
+	// currentInfo is where we are siphoning info from.
+	currentInfo FATFileInfo
+
+	fs.DirEntry
+}
+
+// Name returns the name of the current entry.
+func (d FATDirEntryInfo) Name() string {
+	return d.currentInfo.Name()
+}
+
+// IsDir returns whether the entry is a directory or not.
+func (d FATDirEntryInfo) IsDir() bool {
+	return d.currentInfo.IsDir()
+}
+
+// Type returns a directory-specific fs.FileMode.
+func (d FATDirEntryInfo) Type() fs.FileMode {
+	return d.currentInfo.Mode().Type()
+}
+
+// Info returns our mocked-up statistics.
+func (d FATDirEntryInfo) Info() (fs.FileInfo, error) {
+	return d.currentInfo, nil
 }

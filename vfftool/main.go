@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/wii-tools/vffmod"
+	"io/fs"
 	"log"
 )
 
@@ -24,9 +26,17 @@ func main() {
 		panic(err)
 	}
 	dumpFile(second)
+
+	fs.WalkDir(vffile, "MB", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		fmt.Printf("File Name: %s\n", d.Name())
+		return nil
+	})
 }
 
-func dumpFile(file *vffmod.FATFile) {
+func dumpFile(file fs.File) {
 	stat, err := file.Stat()
 	if err != nil {
 		panic(err)
