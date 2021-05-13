@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -38,7 +37,7 @@ func ReadVFF(contents []byte) (*VFFFS, error) {
 	// We can immediately reject smaller files.
 	// The maximum size comes from https://superuser.com/a/74399
 	// The author of this code has questions on where that number came from.
-	if 0x419999 > len(contents) {
+	if 0x1000 > len(contents) {
 		return nil, ErrInvalidFormat
 	}
 
@@ -86,10 +85,8 @@ func ReadVFF(contents []byte) (*VFFFS, error) {
 	}
 	fs.tableData = tableData
 
-	log.Println(tableData.GetChain(26))
-
 	// Advance the tracked data offset past both two tables.
-	fs.dataOffset = tableSize * 2
+	fs.dataOffset += tableSize * 2
 
 	return &fs, nil
 }
