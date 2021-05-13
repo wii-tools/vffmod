@@ -20,21 +20,23 @@ type FATEntry struct {
 	Reserved               byte
 	CMS                    byte
 	CreationTime           uint16
+	CreationDate           uint16
 	AccessDate             uint16
 	ExtendedAttributeIndex uint16
 	ModificationTime       uint16
-	Start                  uint16
-	FileOffset             uint32
+	ModificationDate       uint16
+	ClusterNum             uint16
+	Size                   uint32
 }
 
-// readEntries parses the FAT entry table at the given offset.
-func (v *VFFFS) readEntries(offset uint32) []FATFile {
+// parseEntries parses the FAT entry table at the given offset.
+func (v *VFFFS) parseEntries(data []byte) []FATFile {
 	var fileInfo []FATFile
 
-	for dirOffset := 0; dirOffset < 32*32; dirOffset += 32 {
+	for dirOffset := 0; dirOffset < len(data); dirOffset += 32 {
 		var dirEntry FATEntry
-		contents := v.readData(uint32(dirOffset), 32)
-		err := binary.Read(bytes.NewBuffer(contents), binary.BigEndian, &dirEntry)
+		contents := data[dirOffset : dirOffset+32]
+		err := binary.Read(bytes.NewBuffer(contents), binary.LittleEndian, &dirEntry)
 		if err != nil {
 			panic(err)
 		}
@@ -46,6 +48,7 @@ func (v *VFFFS) readEntries(offset uint32) []FATFile {
 		}
 
 		// Is this entry meant to be a long name for VFAT?
+		// TODO: consider implementing this
 		if dirEntry.Attributes&FATAddrLongName == FATAddrLongName {
 			continue
 		}
@@ -54,7 +57,6 @@ func (v *VFFFS) readEntries(offset uint32) []FATFile {
 		fileInfo = append(fileInfo, FATFile{
 			info: FATFileInfo{
 				currentFile: dirEntry,
-				dataOffset:  offset + 1024,
 			},
 		})
 	}
@@ -77,10 +79,13 @@ func (f *FATFile) Stat() (FATFileInfo, error) {
 type FATFileInfo struct {
 	// currentFile is where we are siphoning data from.
 	currentFile FATEntry
-	// dataOffset is the offset
-	dataOffset uint32
 
 	fs.FileInfo
+}
+
+// Size returns the size of the current entry.
+func (e *FATFileInfo) Size() int64 {
+	return int64(e.currentFile.Size)
 }
 
 // Mode returns a spoofed-together mode for the current entry.

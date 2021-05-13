@@ -31,5 +31,5 @@ func dumpFile(file *vffmod.FATFile) {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("I found %s, and to say it's a directory is %t", stat.Name(), stat.IsDir())
+	log.Printf("found %s with a size of %d", stat.Name(), stat.Size())
 }

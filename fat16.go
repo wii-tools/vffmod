@@ -69,24 +69,29 @@ func NewFAT16(data []byte) (*FAT16, error) {
 	return &working, nil
 }
 
-func (f *FAT16) GetChain(clusterNum int) ([]Cluster, error) {
+func (f *FAT16) GetChain(clusterNum uint16) ([]Cluster, error) {
 	currentTable := *f
 	var chain []Cluster
 	var current Cluster
 	currentNum := clusterNum
 
+	// Ensure the first cluster's value is present.
+	chain = append(chain, Cluster(currentNum))
+
 	for {
 		// Add the current cluster.
 		current = currentTable[currentNum]
-		chain = append(chain, current)
-
-		// Set the next cluster number to retrieve.
-		currentNum = int(current)
 
 		// If this cluster is not marked as used, we've reached the end of the line.
 		if !current.Used() {
 			break
 		}
+
+		// Keep track of this cluster.
+		chain = append(chain, current)
+
+		// Set the next cluster number to retrieve.
+		currentNum = uint16(current)
 	}
 
 	// Ensure the chain has been properly ended.
@@ -95,4 +100,28 @@ func (f *FAT16) GetChain(clusterNum int) ([]Cluster, error) {
 	} else {
 		return chain, nil
 	}
+}
+
+// readCluster reads the data for the given cluster number by the VFF's cluster size.
+func (v *VFFFS) readCluster(clusterNum uint16) []byte {
+	// All cluster numbers appear to be 2 off.
+	clusterNum -= 2
+	// Additionally, all cluster data is 4096 bytes off as the first cluster is 4096 bytes.
+	return v.readData(v.clusterSize*uint32(clusterNum)+4096, v.clusterSize)
+}
+
+func (v *VFFFS) readChain(clusterNum uint16) ([]byte, error) {
+	var data []byte
+
+	clusters, err := v.tableData.GetChain(clusterNum)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cluster := range clusters {
+		currentData := v.readCluster(uint16(cluster))
+		data = append(data, currentData...)
+	}
+
+	return data, nil
 }

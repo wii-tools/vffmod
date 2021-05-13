@@ -2,7 +2,6 @@ package vffmod
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"strings"
 )
@@ -43,7 +42,7 @@ func getEntry(entries []FATFile, name string) (*FATFile, error) {
 	for _, entry := range entries {
 		info, err := entry.Stat()
 		if err != nil {
-			return nil, err
+			return nil, &fs.PathError{Op: "open", Path: name, Err: err}
 		}
 
 		if info.Name() == name {
@@ -60,19 +59,40 @@ func (v *VFFFS) Open(name string) (*FATFile, error) {
 		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
 	}
 
-	notFound := &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
-
 	// Start by reading the very first directory.
-	currentDirEntries := v.readEntries(0)
-	pathIndex := strings.Index(name, "/")
+	currentDirectory := v.parseEntries(v.readData(0, 4096))
+	pathComponents := strings.Split(name, "/")
+
 	// Check if we need to handle other directories per the path.
-	for pathIndex != -1 {
-		// TODO: recurse through other directories
-		// and rketrieve them
-		fmt.Println("Oops! Unimplemented")
-		return nil, notFound
+	for len(pathComponents) > 1 {
+		// Get the directory we need to look for.
+		dirName := pathComponents[0]
+
+		dirEntry, err := getEntry(currentDirectory, dirName)
+		if err != nil {
+			return nil, err
+		}
+
+		// Ensure the retrieved file is a directory.
+		if !dirEntry.info.IsDir() {
+			return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
+		}
+
+		// Read entries within this directory.
+		newData, err := v.readChain(dirEntry.info.currentFile.ClusterNum)
+		if err != nil {
+			return nil, err
+		}
+
+		// Parse the given entry table for our new directory.
+		currentDirectory = v.parseEntries(newData)
+
+		// Strip the currently handled directory from our list.
+		pathComponents = pathComponents[1:]
 	}
 
-	intendedName := name[pathIndex+1:]
-	return getEntry(currentDirEntries, intendedName)
+	// Now that we have the directory we need to handle,
+	// we can open by only the filename.
+	filename := pathComponents[0]
+	return getEntry(currentDirectory, filename)
 }
