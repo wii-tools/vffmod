@@ -38,6 +38,18 @@ type FATEntry struct {
 	Size                   uint32
 }
 
+func isValidName(name []byte) bool {
+	for _, v := range name {
+		if v == byte(' ') || (v >= byte('A') && v <= byte('Z')) || (v >= byte('0') && v <= byte('9')) {
+			continue
+		}
+
+		return false
+	}
+
+	return true
+}
+
 // parseEntries parses the FAT entry table at the given offset.
 func (v *VFFFS) parseEntries(data []byte) []FATFile {
 	var fileInfo []FATFile
@@ -58,7 +70,14 @@ func (v *VFFFS) parseEntries(data []byte) []FATFile {
 
 		// Is this entry meant to be a long name for VFAT?
 		// TODO: consider implementing this
+		// TODO: maybe don't consid
 		if dirEntry.Attributes&FATAddrLongName == FATAddrLongName {
+			continue
+		}
+
+		// Garbage data isn't interesting. This is mainly to aid in FAT12 support, which seem to generally suffer from some sort of corruption.
+		// TODO: add better checks
+		if !isValidName(dirEntry.Name[:]) || !isValidName(dirEntry.Extension[:]) {
 			continue
 		}
 
