@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	ErrInvalidFormat = errors.New("this file does not appear to be a VFF")
-	ErrInvalidMagic  = errors.New("invalid VFF magic detected")
-	ErrUnknownFAT    = errors.New("non-FAT16 VFF detected")
+	ErrInvalidFormat   = errors.New("this file does not appear to be a VFF")
+	ErrInvalidMagic    = errors.New("invalid VFF magic detected")
+	ErrUnknownFAT      = errors.New("non-FAT16 VFF detected")
+	ErrTooManyClusters = errors.New("this file contains too many clusters for traditional FAT formats (12, 16 and 32)")
 
 	_ fs.DirEntry = (*FATDirEntryInfo)(nil)
 	_ fs.FileInfo = (*FATFileInfo)(nil)
@@ -37,8 +38,8 @@ type VFFFS struct {
 	// dataOffset holds the offset where data exists within the VFF.
 	dataOffset uint32
 
-	fs.ReadDirFS
-	fs.FS
+	_ fs.FS
+	_ fs.ReadDirFS
 }
 
 // getFile loops through an array of entries and returns the matching entry name if possible.

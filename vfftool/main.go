@@ -2,44 +2,38 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/wii-tools/vffmod"
-	"io/fs"
-	"log"
 )
 
 func main() {
-	vffile, err := vffmod.OpenVFF("/Users/spot/Desktop/wc24recv.mbx")
-	if err != nil {
-		panic(err)
+	if len(os.Args) <= 2 {
+		fmt.Printf("Usage: %s [path to a valid VFF] [directory to read in the VFF]", os.Args[0])
+		os.Exit(1)
 	}
 
-	// Attempt opening the main directory "MB"
-	testing, err := vffile.Open("MB")
+	vffile, err := vffmod.OpenVFF(os.Args[1])
 	if err != nil {
-		panic(err)
+		fmt.Printf("Failed to open the VFF \"%s\": \"%s\".\n", os.Args[1], err.Error())
+		os.Exit(2)
 	}
-	dumpFile(testing)
 
-	// Attempt opening a file within "MB"
-	second, err := vffile.Open("MB/R0000032.MSG")
+	file, err := vffile.Open(os.Args[2])
 	if err != nil {
-		panic(err)
+		fmt.Printf("Failed to read the file/directory \"%s\" inside \"%s\": \"%s\".\n", os.Args[2], os.Args[1], err.Error())
+		os.Exit(3)
 	}
-	dumpFile(second)
 
-	fs.WalkDir(vffile, "MB", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			log.Fatalf(err.Error())
-		}
-		fmt.Printf("File Name: %s\n", d.Name())
-		return nil
-	})
-}
-
-func dumpFile(file fs.File) {
-	stat, err := file.Stat()
+	info, err := file.Stat()
 	if err != nil {
-		panic(err)
+		fmt.Printf("Failed to fetch information for the file \"%s\": \"%s\".\n", os.Args[2], err.Error())
+		os.Exit(4)
 	}
-	log.Printf("found %s with a size of %d", stat.Name(), stat.Size())
+
+	if info.IsDir() {
+		fmt.Printf("- Name: \"%s\"\n- Type: directory\n", info.Name())
+	} else {
+		fmt.Printf("- Name: \"%s\"\n- Type: file\n- File size: %d\n", info.Name(), info.Size())
+	}
 }

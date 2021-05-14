@@ -38,11 +38,6 @@ type FATEntry struct {
 	Size                   uint32
 }
 
-// equal returns if two byte slices are equal.
-func equal(a []byte, b []byte) bool {
-	return bytes.Compare(a, b) == 0
-}
-
 // parseEntries parses the FAT entry table at the given offset.
 func (v *VFFFS) parseEntries(data []byte) []FATFile {
 	var fileInfo []FATFile
@@ -68,7 +63,7 @@ func (v *VFFFS) parseEntries(data []byte) []FATFile {
 		}
 
 		// We are not dealing with . or .. as names. All end with 3 spaces as an extension.
-		if (equal(dirEntry.Name[:], ForbiddenSingleDot) || equal(dirEntry.Name[:], ForbiddenDoubleDot)) && equal(dirEntry.Extension[:], ForbiddenExtension) {
+		if (bytes.Equal(dirEntry.Name[:], ForbiddenSingleDot) || bytes.Equal(dirEntry.Name[:], ForbiddenDoubleDot)) && bytes.Equal(dirEntry.Extension[:], ForbiddenExtension) {
 			continue
 		}
 
