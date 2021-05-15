@@ -5,3 +5,4 @@ vfftool/vfftool
 *.exe
 *.vff
 *.mbx
+__debug_bin

@@ -3,6 +3,7 @@ package vffmod
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io/fs"
 	"strings"
 )
@@ -38,18 +39,6 @@ type FATEntry struct {
 	Size                   uint32
 }
 
-func isValidName(name []byte) bool {
-	for _, v := range name {
-		if v == byte(' ') || (v >= byte('A') && v <= byte('Z')) || (v >= byte('0') && v <= byte('9')) {
-			continue
-		}
-
-		return false
-	}
-
-	return true
-}
-
 // parseEntries parses the FAT entry table at the given offset.
 func (v *VFFFS) parseEntries(data []byte) []FATFile {
 	var fileInfo []FATFile
@@ -75,16 +64,12 @@ func (v *VFFFS) parseEntries(data []byte) []FATFile {
 			continue
 		}
 
-		// Garbage data isn't interesting. This is mainly to aid in FAT12 support, which seem to generally suffer from some sort of corruption.
-		// TODO: add better checks
-		if !isValidName(dirEntry.Name[:]) || !isValidName(dirEntry.Extension[:]) {
-			continue
-		}
-
 		// We are not dealing with . or .. as names. All end with 3 spaces as an extension.
 		if (bytes.Equal(dirEntry.Name[:], ForbiddenSingleDot) || bytes.Equal(dirEntry.Name[:], ForbiddenDoubleDot)) && bytes.Equal(dirEntry.Extension[:], ForbiddenExtension) {
 			continue
 		}
+
+		fmt.Printf("%s.%s\n", strings.Trim(string(dirEntry.Name[:]), " "), strings.Trim(string(dirEntry.Extension[:]), " "))
 
 		// dataOffset must grow by 1024 to be able to read over the current entry table.
 		fileInfo = append(fileInfo, FATFile{

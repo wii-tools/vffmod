@@ -3,6 +3,7 @@ package vffmod
 import (
 	"bytes"
 	"encoding/binary"
+	"math/bits"
 	"os"
 )
 
@@ -11,10 +12,19 @@ var (
 	VFFMagic = [4]byte{0x56, 0x46, 0x46, 0x20}
 )
 
+const (
+	// VFFBigEndian is used to check whether this file was made with the crappy SDK tools or not.
+	VFFBigEndian = 0xFEFF0100
+
+	// VFFLittleEndian is the opposite of VFFBigEndian, and necessary for its check.
+	// See above for more information.
+	VFFLittleEndian = 0xFFFE0100
+)
+
 // VFFHeader allows us to keep track of the VFF.
 type VFFHeader struct {
 	Magic       [4]byte
-	Unknown     uint32
+	Endianness  uint32
 	VolumeSize  uint32
 	ClusterSize uint16
 }
@@ -50,9 +60,17 @@ func ReadVFF(contents []byte) (*VFFFS, error) {
 
 	fs := VFFFS{fileData: contents}
 
-	fs.volumeSize = header.VolumeSize
-	fs.clusterSize = uint32(header.ClusterSize) * 16
-	fs.clusterCount = fs.volumeSize / fs.clusterSize
+	switch header.Endianness {
+	case VFFBigEndian:
+		fs.volumeSize = header.VolumeSize
+		fs.clusterSize = uint32(header.ClusterSize) * 16
+		fs.clusterCount = fs.volumeSize / fs.clusterSize
+
+	case VFFLittleEndian:
+		fs.volumeSize = header.VolumeSize
+		fs.clusterSize = uint32(bits.Reverse16(header.ClusterSize)) * 128
+		fs.clusterCount = fs.volumeSize / fs.clusterSize
+	}
 
 	fs.dataOffset = 32 // The first FAT file table is 32 bytes into the file.
 
