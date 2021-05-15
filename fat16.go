@@ -62,8 +62,7 @@ func NewFAT16(data []byte) (*FAT16, error) {
 
 	// For every two bytes, convert them to uint16s.
 	for pos := 0; pos < len(data); pos += 2 {
-		converted := binary.LittleEndian.Uint16(data[pos : pos+2])
-		working = append(working, Cluster(converted))
+		working = append(working, Cluster(binary.LittleEndian.Uint16(data[pos:pos+2])))
 	}
 
 	return &working, nil

@@ -3,6 +3,7 @@ package vffmod
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io/fs"
 	"strings"
 )
@@ -38,11 +39,6 @@ type FATEntry struct {
 	Size                   uint32
 }
 
-// equal returns if two byte slices are equal.
-func equal(a []byte, b []byte) bool {
-	return bytes.Compare(a, b) == 0
-}
-
 // parseEntries parses the FAT entry table at the given offset.
 func (v *VFFFS) parseEntries(data []byte) []FATFile {
 	var fileInfo []FATFile
@@ -63,14 +59,17 @@ func (v *VFFFS) parseEntries(data []byte) []FATFile {
 
 		// Is this entry meant to be a long name for VFAT?
 		// TODO: consider implementing this
+		// TODO: maybe don't consid
 		if dirEntry.Attributes&FATAddrLongName == FATAddrLongName {
 			continue
 		}
 
 		// We are not dealing with . or .. as names. All end with 3 spaces as an extension.
-		if (equal(dirEntry.Name[:], ForbiddenSingleDot) || equal(dirEntry.Name[:], ForbiddenDoubleDot)) && equal(dirEntry.Extension[:], ForbiddenExtension) {
+		if (bytes.Equal(dirEntry.Name[:], ForbiddenSingleDot) || bytes.Equal(dirEntry.Name[:], ForbiddenDoubleDot)) && bytes.Equal(dirEntry.Extension[:], ForbiddenExtension) {
 			continue
 		}
+
+		fmt.Printf("%s.%s\n", strings.Trim(string(dirEntry.Name[:]), " "), strings.Trim(string(dirEntry.Extension[:]), " "))
 
 		// dataOffset must grow by 1024 to be able to read over the current entry table.
 		fileInfo = append(fileInfo, FATFile{

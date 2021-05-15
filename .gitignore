@@ -1,2 +1,8 @@
 vfftool/vfftool
 .idea
+
+.vscode
+*.exe
+*.vff
+*.mbx
+__debug_bin
