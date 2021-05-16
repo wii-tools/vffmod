@@ -94,12 +94,7 @@ func (f FATFile) Read(buffer []byte) (int, error) {
 		return 0, err
 	}
 
-	var i uint32 = 0
-	for ; i < f.info.currentFile.Size; i++ {
-		buffer[i] = data[i]
-	}
-
-	return int(f.info.currentFile.Size), nil
+	return copy(buffer, data), nil
 }
 
 // Stat is supposed to return statistics, and we already have them computed.

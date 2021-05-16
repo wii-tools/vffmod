@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/wii-tools/vffmod"
@@ -36,4 +37,8 @@ func main() {
 	} else {
 		fmt.Printf("- Name: \"%s\"\n- Type: file\n- File size: %d\n", info.Name(), info.Size())
 	}
+
+	buffer := make([]byte, info.Size())
+	file.Read(buffer)
+	ioutil.WriteFile(info.Name(), buffer, 0777)
 }
