@@ -3,7 +3,6 @@ package vffmod
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io/fs"
 	"strings"
 )
@@ -69,10 +68,9 @@ func (v *VFFFS) parseEntries(data []byte) []FATFile {
 			continue
 		}
 
-		fmt.Printf("%s.%s\n", strings.Trim(string(dirEntry.Name[:]), " "), strings.Trim(string(dirEntry.Extension[:]), " "))
-
 		// dataOffset must grow by 1024 to be able to read over the current entry table.
 		fileInfo = append(fileInfo, FATFile{
+			source: v,
 			info: FATFileInfo{
 				currentFile: dirEntry,
 			},
@@ -84,8 +82,24 @@ func (v *VFFFS) parseEntries(data []byte) []FATFile {
 
 // FATFile provides fs.File-like information.
 type FATFile struct {
-	info FATFileInfo
+	source *VFFFS
+	info   FATFileInfo
 	fs.File
+}
+
+// Read returns the raw bytes of the given file.
+func (f FATFile) Read(buffer []byte) (int, error) {
+	data, err := f.source.readChain(f.info.currentFile.ClusterNum)
+	if err != nil {
+		return 0, err
+	}
+
+	var i uint32 = 0
+	for ; i < f.info.currentFile.Size; i++ {
+		buffer[i] = data[i]
+	}
+
+	return int(f.info.currentFile.Size), nil
 }
 
 // Stat is supposed to return statistics, and we already have them computed.
