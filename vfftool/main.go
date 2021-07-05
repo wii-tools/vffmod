@@ -36,9 +36,8 @@ func main() {
 		fmt.Printf("- Name: \"%s\"\n- Type: directory\n", info.Name())
 	} else {
 		fmt.Printf("- Name: \"%s\"\n- Type: file\n- File size: %d\n", info.Name(), info.Size())
+		buffer := make([]byte, info.Size())
+		file.Read(buffer)
+		ioutil.WriteFile(info.Name(), buffer, 0777)
 	}
-
-	buffer := make([]byte, info.Size())
-	file.Read(buffer)
-	ioutil.WriteFile(info.Name(), buffer, 0777)
 }
