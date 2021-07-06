@@ -14,23 +14,29 @@ var (
 
 const (
 	// VFFBigEndian is used to check whether this file was made with the crappy SDK tools or not.
-	VFFBigEndian = 0xFEFF0100
+	VFFBigEndian = 0xFEFF
 
 	// VFFLittleEndian is the opposite of VFFBigEndian, and necessary for its check.
 	// See above for more information.
-	VFFLittleEndian = 0xFFFE0100
+	VFFLittleEndian = 0xFFFE
 )
 
 // VFFHeader allows us to keep track of the VFF.
 type VFFHeader struct {
-	Magic       [4]byte
-	Endianness  uint32
-	VolumeSize  uint32
-	ClusterSize uint16
+	Magic      [4]byte
+	Endianness uint16
+	// Observed to always be 0x100.
+	UnknownMarker uint16
+	VolumeSize    uint32
+	ClusterSize   uint16
+	// Observed to be unused.
+	_ uint16
+	// Set to 0x0 or 0x1 depending on unknown circumstances.
+	Unknown byte
+	_       [15]byte
 }
 
-// OpenVFF reads a VFF at the given path, returning
-// a usable filesystem representation.
+// OpenVFF reads a VFF at the given path, returning a usable filesystem representation.
 func OpenVFF(path string) (*VFFFS, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
@@ -70,6 +76,9 @@ func ReadVFF(contents []byte) (*VFFFS, error) {
 		fs.volumeSize = header.VolumeSize
 		fs.clusterSize = uint32(bits.Reverse16(header.ClusterSize)) * 128
 		fs.clusterCount = fs.volumeSize / fs.clusterSize
+
+	default:
+		return nil, ErrInvalidFormat
 	}
 
 	fs.dataOffset = 32 // The first FAT file table is 32 bytes into the file.
