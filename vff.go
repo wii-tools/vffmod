@@ -50,6 +50,11 @@ func getFile(entries []FATFile, name string) (*FATFile, error) {
 			return nil, err
 		}
 
+		// In the special case of the name ".", we return ourselves.
+		if name == "." {
+			return &entry, nil
+		}
+
 		if info.Name() == name {
 			return &entry, nil
 		}
@@ -124,9 +129,15 @@ func (v *VFFFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	pathComponents := strings.Split(name, "/")
 
 	// Check if we need to handle other directories per the path.
-	for len(pathComponents) > 1 {
+	for len(pathComponents) != 0 {
 		// Get the directory we need to look for.
 		dirName := pathComponents[0]
+
+		// For the special name "." as a root, we do not need to change directories.
+		if dirName == "." {
+			pathComponents = pathComponents[1:]
+			continue
+		}
 
 		currentDirectory, err = v.getDirectory(currentDirectory, dirName)
 		if err != nil {
