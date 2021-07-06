@@ -10,25 +10,28 @@ import (
 
 func main() {
 	if len(os.Args) <= 2 {
-		fmt.Printf("Usage: %s [path to a valid VFF] [directory to read in the VFF]", os.Args[0])
+		fmt.Printf("Usage: %s [path to a valid VFF] [directory to read in the VFF]\n", os.Args[0])
 		os.Exit(1)
 	}
 
+	filename := os.Args[1]
+	fileToRead := os.Args[2]
+
 	vffile, err := vffmod.OpenVFF(os.Args[1])
 	if err != nil {
-		fmt.Printf("Failed to open the VFF \"%s\": \"%s\".\n", os.Args[1], err.Error())
+		fmt.Printf("Failed to open the VFF \"%s\": \"%v\".\n", filename, err)
 		os.Exit(2)
 	}
 
 	file, err := vffile.Open(os.Args[2])
 	if err != nil {
-		fmt.Printf("Failed to read the file/directory \"%s\" inside \"%s\": \"%s\".\n", os.Args[2], os.Args[1], err.Error())
+		fmt.Printf("Failed to read the file/directory \"%s\" inside \"%s\": \"%v\".\n", fileToRead, filename, err)
 		os.Exit(3)
 	}
 
 	info, err := file.Stat()
 	if err != nil {
-		fmt.Printf("Failed to fetch information for the file \"%s\": \"%s\".\n", os.Args[2], err.Error())
+		fmt.Printf("Failed to fetch information for the file \"%s\": \"%v\".\n", fileToRead, err)
 		os.Exit(4)
 	}
 
